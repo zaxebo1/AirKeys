@@ -1,14 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:background="@android:color/black"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:background="@android:color/black">
+
     <TextView
         android:id="@+id/keyboard_text"
-        android:textSize="16sp"
-        android:textColor="@android:color/white"
         android:layout_width="match_parent"
+        android:layout_height="100dp"
         android:gravity="center_horizontal"
         android:text="No connections"
-        android:layout_height="100dp" />
+        android:textColor="@android:color/white"
+        android:textSize="16sp" />
+
+
+    <Button
+        android:id="@+id/keyboard_show_mehtods"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/keyboard_text"
+        android:layout_centerInParent="true"
+        android:text="Switch Keyboards" />
 </RelativeLayout>

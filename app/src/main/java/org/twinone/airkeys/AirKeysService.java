@@ -8,6 +8,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -42,6 +44,7 @@ public class AirKeysService extends InputMethodService {
 
 
     private TextView mMessage;
+    private Button mButton;
     private InputServer mServer;
 
     private static final int HTTP_PORT = 8080; // TODO support ssl?
@@ -71,7 +74,9 @@ public class AirKeysService extends InputMethodService {
         try {
             mServer.stop();
         } catch (Exception e) {
-            Log.w(TAG, "Exception stopping Jetty", e);
+            Log.v(TAG, "Exception stopping Jetty", e);
+        } catch (Error e) {
+            Log.v(TAG, "Error stopping Jetty", e);
         }
     }
 
@@ -79,6 +84,13 @@ public class AirKeysService extends InputMethodService {
     public View onCreateInputView() {
         ViewGroup vg = (ViewGroup) LayoutInflater.from(this).inflate(R.layout.keyboard, null);
         mMessage = (TextView) vg.findViewById(R.id.keyboard_text);
+        mButton = (Button)vg.findViewById(R.id.keyboard_show_mehtods);
+        mButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSelectInputMethodDialog();
+            }
+        });
         updateClients();
         return vg;
     }
@@ -88,6 +100,12 @@ public class AirKeysService extends InputMethodService {
     public void onDestroy() {
         Log.d(TAG, "OnDestroy");
         super.onDestroy();
+        stopServer();
+    }
+
+    private void showSelectInputMethodDialog() {
+        InputMethodManager im = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        im.showInputMethodPicker();
     }
 
 
@@ -239,11 +257,12 @@ public class AirKeysService extends InputMethodService {
                     if (mClients.size() > 0) {
                         mMessage.setText("Conn: " + mClients.get(0).host);
                     } else {
-                        mMessage.setText("No clients connected");
+                        mMessage.setText("Listening on " + NetUtil.getIPV4NetworkInterface() + ":" + HTTP_PORT);
                     }
                 }
             }
         });
     }
+
 
 }
