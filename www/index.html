@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>AirKeys</title>
+	<style type="text/css">
+	#container input {
+		margin: 0 auto;
+		display: block;
+	}
+	</style>
+</head>
+<body>
+
+
+	<input id="keyboard-input"></input>
+	<!-- jQuery -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+	<script>if (!window.jQuery) document.write('<script src="/js/jquery.min.js"><\/script>');</script>
+	<!-- Websockets -->
+	<script src="js/ws.js"></script>
+	<script>
+	$(document).ready(function() {
+		server.connect();
+		$('#keyboard-input').on('keyup', function(e) {
+			if (e.which == 13) {
+				server.send({
+					"action": "enter"
+				});
+				$("#keyboard-input").val("");			
+
+			} else {
+				server.send({
+					"action": "text", 
+					"text": $("#keyboard-input").val()
+				});
+
+			}
+		});
+	});
+	</script>
+</body>
+</html>
