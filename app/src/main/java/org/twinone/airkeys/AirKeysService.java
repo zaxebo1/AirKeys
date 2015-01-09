@@ -1,12 +1,18 @@
 package org.twinone.airkeys;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.Intent;
 import android.inputmethodservice.InputMethodService;
+import android.os.Build;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -33,8 +39,9 @@ public class AirKeysService extends InputMethodService {
     private static final int MAX_CLIENTS = 1;
 
     private static final String ACTION_TEXT = "text";
+    private static final String ACTION_COMMIT = "commit";
     private static final String ACTION_ENTER = "enter";
-    private static final String ACTION_BACKSPACE = "backspace";
+    private static final String ACTION_CURSOR = "cursor";
 
     private static final boolean FORCE_RELOAD = true;
     private static final String TAG = AirKeysService.class.getSimpleName();
@@ -84,17 +91,23 @@ public class AirKeysService extends InputMethodService {
     public View onCreateInputView() {
         ViewGroup vg = (ViewGroup) LayoutInflater.from(this).inflate(R.layout.keyboard, null);
         mMessage = (TextView) vg.findViewById(R.id.keyboard_text);
-        mButton = (Button)vg.findViewById(R.id.keyboard_show_mehtods);
+        mButton = (Button) vg.findViewById(R.id.keyboard_show_mehtods);
         mButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showSelectInputMethodDialog();
+                switchToNextIME();
+            }
+        });
+        mButton.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                showSelectInputMethodDialog(AirKeysService.this);
+                return true;
             }
         });
         updateClients();
         return vg;
     }
-
 
     @Override
     public void onDestroy() {
@@ -102,12 +115,6 @@ public class AirKeysService extends InputMethodService {
         super.onDestroy();
         stopServer();
     }
-
-    private void showSelectInputMethodDialog() {
-        InputMethodManager im = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        im.showInputMethodPicker();
-    }
-
 
     private class InputServer extends Server {
         public InputServer() {
@@ -222,29 +229,30 @@ public class AirKeysService extends InputMethodService {
     }
 
     class ClientMessage {
-        String text;
         String action;
+        String text;
+        int[] cursor;
     }
 
     class ServerMessage {
         String text;
     }
 
-    private void onMessage(WSClient client, ClientMessage m) {
-        InputConnection conn = getCurrentInputConnection();
 
-        if (conn == null) Log.w(TAG, "InputConnection null");
-        switch (m.action) {
-            case ACTION_TEXT:
-                conn.deleteSurroundingText(Integer.MAX_VALUE, Integer.MAX_VALUE);
-                conn.commitText(m.text, m.text.length());
-                break;
-            case ACTION_ENTER:
-                KeyEvent enterDown = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER);
-                conn.sendKeyEvent(enterDown);
-                KeyEvent enterUp = new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER);
-                conn.sendKeyEvent(enterUp);
+    @SuppressLint("NewApi")
+    private void switchToNextIME() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            final IBinder token = this.getWindow().getWindow().getAttributes().token;
+            imm.switchToNextInputMethod(token, false);
+        } else {
+            showSelectInputMethodDialog(this);
         }
+    }
+
+    public static void showSelectInputMethodDialog(Context c) {
+        InputMethodManager im = (InputMethodManager) c.getSystemService(INPUT_METHOD_SERVICE);
+        im.showInputMethodPicker();
     }
 
     private void updateClients() {
@@ -264,5 +272,38 @@ public class AirKeysService extends InputMethodService {
         });
     }
 
+    private void onMessage(WSClient client, ClientMessage m) {
+        InputConnection conn = getCurrentInputConnection();
 
+        if (conn == null) Log.w(TAG, "InputConnection null");
+        switch (m.action) {
+            case ACTION_TEXT:
+                int size = conn.getExtractedText(new ExtractedTextRequest(), 0).text.length();
+                conn.deleteSurroundingText(size, size);
+                if (m.text != null)
+                    conn.commitText(m.text, 1);
+                if (m.cursor != null) {
+                    conn.setSelection(m.cursor[0], m.cursor[1]);
+                }
+                break;
+            case ACTION_COMMIT:
+                conn.commitText(m.text, 1);
+                break;
+            case ACTION_ENTER:
+                KeyEvent enterDown = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER);
+                conn.sendKeyEvent(enterDown);
+                KeyEvent enterUp = new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER);
+                conn.sendKeyEvent(enterUp);
+                break;
+            case ACTION_CURSOR:
+                conn.setSelection(m.cursor[0], m.cursor[1]);
+                break;
+//            case ACTION_BACKSPACE:
+//                conn.deleteSurroundingText(1, 0);
+//                break;
+//            case ACTION_DELETE:
+//                conn.deleteSurroundingText(0, 1);
+//                break;
+        }
+    }
 }

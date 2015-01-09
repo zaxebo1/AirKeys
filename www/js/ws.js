@@ -1,4 +1,5 @@
 var server = {
+	debug: true,
 	isConnected : false,
 	checkServerOffline : false,
 	isServerOffline : false,
@@ -7,6 +8,7 @@ var server = {
 	slowReconnect : 1000,
 	queue : [],
 	connect : function() {
+		console.log("Connecting WebSocket");
 		var location;
 		if (document.location.protocol == "http:") {
 			location = "ws://";
@@ -19,6 +21,7 @@ var server = {
 		this.socket.onopen = this.onOpen;
 		this.socket.onmessage = this.onMessage;
 		this.socket.onclose = this.onClose;
+		this.socket.onerror = this.onError;
 	},
 
 	onOpen : function() {
@@ -29,6 +32,9 @@ var server = {
 		}
 
 		if (this.server.isServerOffline) {
+			if (this.server.debug) {
+				location.reload();
+			}
 			console.log(new Date() + " Reconnected to websocket");
 			tempAlert("Reconnected to the server");
 		} else {
@@ -48,6 +54,8 @@ var server = {
 	onClose : function() {
 		if (this.server.isConnected) {
 			console.log("WebSocket disconnected " + new Date());
+		} else {
+			console.log("WebSocket failed to connect");
 		}
 		this.server.isConnected  = false;
 		if (this.server.checkServerOffline == true) {
@@ -67,6 +75,10 @@ var server = {
 		}, self.server.reconnectInterval);
 	},
 
+	onError: function onError(event) {
+		console.log("Error connecting websocket");
+	},
+
 	send : function(json) {
 		this.sendRaw(JSON.stringify(json));
 	},
@@ -81,7 +93,6 @@ var server = {
 	}
 };
 
-// Yes, i know it's ugly
 function tempAlert(msg){
 	$("div.tmpalert").remove();
 	var el = document.createElement("div");

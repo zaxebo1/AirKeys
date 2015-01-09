@@ -3,40 +3,135 @@
 <head>
 	<title>AirKeys</title>
 	<style type="text/css">
+	.center {
+		margin-left: auto;
+		margin-right: auto;
+		display: block;		
+	}
 	#container input {
-		margin: 0 auto;
-		display: block;
+		margin-top: 30px;
+	}
+	#keyboard-input {
 	}
 	</style>
 </head>
 <body>
 
 
-	<input id="keyboard-input"></input>
+	<div id="container" class="center">
+		<textarea class="center" id="keyboard-input" rows=25 cols=100></textarea>
+	</div>
 	<!-- jQuery -->
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 	<script>if (!window.jQuery) document.write('<script src="/js/jquery.min.js"><\/script>');</script>
 	<!-- Websockets -->
 	<script src="js/ws.js"></script>
 	<script>
+	var AirKeys = {
+		text: null,
+		isPressed: false,
+		input : $("#keyboard-input"),
+		cursor : [-1,-1]
+	};
+
 	$(document).ready(function() {
+		AirKeys.input.focus();
 		server.connect();
-		$('#keyboard-input').on('keyup', function(e) {
-			if (e.which == 13) {
-				server.send({
-					"action": "enter"
-				});
-				$("#keyboard-input").val("");			
 
-			} else {
-				server.send({
-					"action": "text", 
-					"text": $("#keyboard-input").val()
-				});
+		AirKeys.input.on('keyup', function onKeyUp(e) {
+			var k = e.which;
+			// if (k == 8)  { console.log("backspace"); }
+			// if (k == 9)  { console.log("tab"); }
+			// if (k == 27) { console.log("esc"); }
+			// if (k == 46) { console.log("delete"); }
+			// if (k == 37) { console.log("left"); }
+			// if (k == 38) { console.log("up"); }
+			// if (k == 39) { console.log("right"); }
+			// if (k == 40) { console.log("down"); }
+			// shift 16
+			// control 17
+			// alt 18, 225(macbook)
 
+			// if (37 <= k && k <= 40) sendCursor(); // arrow keys
+			// if (k == 16 || k == 17 || k == 18) sendCursor();
+			sendCursor(); // just always
+			if (k == 8) {
+				// server.send({"action":"backspace"});
+				// Could be a long press
+				sendCompleteText();
 			}
+			else if (k == 46) {
+				// server.send({"action":"delete"});
+				sendCompleteText();
+			}
+			else if (k == 13) {
+				server.send({"action": "enter"});
+				clean();
+			}
+			// else if (pressed) sendText();
+
+			AirKeys.text = AirKeys.input.val();
+		})
+		.on('keypress', function onKeyPress(e) {
+			console.log("OnKeyPress");
+			defer(commitText(String.fromCharCode(e.which), getCursor()[0]));
+		})
+		.on('paste cut', function onCutOrPaste(e) {
+			defer(sendCompleteText);
 		});
-	});
-	</script>
+
+		function commitText(char, cursorPosition) {
+			server.send({
+				"action": "commit", 
+				"text": char,
+				"cursor": [cursorPosition, cursorPosition]
+			});
+		}
+
+		function sendCompleteText() {
+			// TODO delta send
+			server.send({
+				"action": "text", 
+				"text": AirKeys.input.val(),
+				"cursor" : getCursor()
+			});
+		}
+
+		function defer(f) {
+			setTimeout(f, 0);
+		}
+
+	// function isSpecialChar(c) {
+	// 	if (c <= 40) {
+	// 		if (c == 8 || c == 9 || c == 13 || c == 27) return true;
+	// 		if (c >= 16 && c <= 20) return true;
+	// 		if (c >= 33) return true;
+	// 	} else {
+	// 		if (c == 42 || c == 45 || c == 46 || c == 93 || c == 145) return true;
+	// 		if (c >= 112 && c <= 123) return true;
+	// 	}
+	// 	return false;
+	// }
+	function sendCursor() {
+		var cursor = getCursor();
+		if (cursor[0] != AirKeys.cursor[0] || cursor[1] != AirKeys.cursor[1]) {
+			server.send({
+				"action": "cursor",
+				"cursor" : cursor
+			});
+			AirKeys.cursor = cursor;
+		}
+	}
+
+	function getCursor() {
+		var start = AirKeys.input[0].selectionStart;
+		var end = AirKeys.input[0].selectionEnd;
+		return [start, end];
+	}
+	function clean() {
+		AirKeys.input.val("");			
+	}
+});
+</script>
 </body>
 </html>

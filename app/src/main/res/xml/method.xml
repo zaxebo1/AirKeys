@@ -1,13 +1,3 @@
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:settingsActivity="org.twinone.airkeys.MainActivity"
-    android:supportsSwitchingToNextInputMethod="true"
-    >
-    <subtype
-        android:label="Omg"
-        android:imeSubtypeLocale="en_US"
-        android:imeSubtypeMode="keyboard" />
-    <subtype
-        android:label="Test1"
-        android:imeSubtypeLocale="en_GB"
-        android:imeSubtypeMode="keyboard" />
-</input-method>
+    android:supportsSwitchingToNextInputMethod="true"/>

@@ -9,16 +9,40 @@
     tools:context="org.twinone.airkeys.MainActivity">
 
     <TextView
-        android:id="@+id/a"
+        android:id="@+id/main_tv_add_ime"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello this is a test for mainactivity" />
+        android:text="Step 1:" />
+
+    <Button
+        android:id="@+id/main_b_add_ime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/main_tv_add_ime"
+        android:layout_marginTop="8dp"
+        android:text="Enable AirKeys" />
+
+    <TextView
+        android:id="@+id/main_tv_select_ime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/main_b_add_ime"
+        android:layout_marginTop="32dp"
+        android:text="Step 2:" />
+
+    <Button
+        android:id="@+id/main_b_select_ime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/main_tv_select_ime"
+        android:layout_marginTop="8dp"
+        android:text="Select AirKeys" />
 
     <EditText
-        android:layout_marginTop="8dp"
-        android:layout_below="@id/a"
-        android:hint="Test your inputmethod here"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_below="@id/main_b_select_ime"
+        android:layout_marginTop="20dp" />
+
 
 </RelativeLayout>
