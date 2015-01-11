@@ -10,4 +10,4 @@ cd AirKeys
 And just build as any other Android app
 
 # License
-See [LICENSE](https://github.com/twinone/AirKeys/edit/master/LICENSE)
+See [LICENSE](https://github.com/twinone/AirKeys/blob/master/LICENSE)
