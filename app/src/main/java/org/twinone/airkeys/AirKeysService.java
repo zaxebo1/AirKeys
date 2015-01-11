@@ -1,9 +1,7 @@
 package org.twinone.airkeys;
 
 import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.content.Context;
-import android.content.Intent;
 import android.inputmethodservice.InputMethodService;
 import android.os.Build;
 import android.os.IBinder;
@@ -38,10 +36,15 @@ public class AirKeysService extends InputMethodService {
 
     private static final int MAX_CLIENTS = 1;
 
+    // Client actions
     private static final String ACTION_TEXT = "text";
     private static final String ACTION_COMMIT = "commit";
     private static final String ACTION_ENTER = "enter";
     private static final String ACTION_CURSOR = "cursor";
+
+    // Server actions
+    private static final String ACTION_CONNECTED = "connected";
+    private static final String ACTION_DISCONNECTED = "disconnected";
 
     private static final boolean FORCE_RELOAD = true;
     private static final String TAG = AirKeysService.class.getSimpleName();
@@ -105,7 +108,7 @@ public class AirKeysService extends InputMethodService {
                 return true;
             }
         });
-        updateClients();
+        updateTextViewInfoClients();
         return vg;
     }
 
@@ -169,19 +172,32 @@ public class AirKeysService extends InputMethodService {
         private String host;
         private Connection mConnection;
 
+        public void send(final String message) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        mConnection.sendMessage(message);
+                    } catch (Exception e) {
+                        Log.d(TAG, "Failed to send message to a client");
+                    }
+                }
+            }).start();
+        }
+
         @Override
         public void onOpen(Connection connection) {
             Log.d(TAG, "OnOpen");
             mConnection = connection;
             mClients.add(this);
-            updateClients();
+            updateTextViewInfoClients();
         }
 
         @Override
         public void onClose(int i, String s) {
             Log.d(TAG, "OnClose");
             mClients.remove(this);
-            updateClients();
+            updateTextViewInfoClients();
         }
 
         @Override
@@ -190,9 +206,7 @@ public class AirKeysService extends InputMethodService {
             ClientMessage m = new Gson().fromJson(s, ClientMessage.class);
             AirKeysService.this.onMessage(this, m);
         }
-
     }
-
 
     public class InputServlet extends WebSocketServlet {
 
@@ -218,12 +232,10 @@ public class AirKeysService extends InputMethodService {
 
 
     private void sendMessage(ServerMessage m) {
+        String message = new Gson().toJson(m);
+        Log.d(TAG, "Sending: " + message);
         for (WSClient c : mClients) {
-            try {
-                c.mConnection.sendMessage(new Gson().toJson(m));
-            } catch (Exception e) {
-                Log.w(TAG, "Failed to send message to a client");
-            }
+            c.send(message);
         }
 
     }
@@ -235,6 +247,7 @@ public class AirKeysService extends InputMethodService {
     }
 
     class ServerMessage {
+        String action;
         String text;
     }
 
@@ -255,7 +268,7 @@ public class AirKeysService extends InputMethodService {
         im.showInputMethodPicker();
     }
 
-    private void updateClients() {
+    private void updateTextViewInfoClients() {
         if (mMessage == null) return;
         mMessage.post(new Runnable() {
             @Override
@@ -263,7 +276,7 @@ public class AirKeysService extends InputMethodService {
                 Log.d(TAG, "Setting text");
                 synchronized (mClients) {
                     if (mClients.size() > 0) {
-                        mMessage.setText("Conn: " + mClients.get(0).host);
+                        mMessage.setText("Connected to " + mClients.get(0).host);
                     } else {
                         mMessage.setText("Listening on " + NetUtil.getIPV4NetworkInterface() + ":" + HTTP_PORT);
                     }
@@ -272,38 +285,48 @@ public class AirKeysService extends InputMethodService {
         });
     }
 
+    private String getCurrentText() {
+        try {
+            return (String) getCurrentInputConnection().getExtractedText(new ExtractedTextRequest(), 0).text;
+        } catch (NullPointerException ignored) {
+            return null;
+        }
+    }
+
     private void onMessage(WSClient client, ClientMessage m) {
         InputConnection conn = getCurrentInputConnection();
 
         if (conn == null) Log.w(TAG, "InputConnection null");
-        switch (m.action) {
-            case ACTION_TEXT:
-                int size = conn.getExtractedText(new ExtractedTextRequest(), 0).text.length();
-                conn.deleteSurroundingText(size, size);
-                if (m.text != null)
+        synchronized (conn) {
+            switch (m.action) {
+                case ACTION_TEXT:
+                    int size = getCurrentText().length();
+                    conn.deleteSurroundingText(size, size);
+                    if (m.text != null)
+                        conn.commitText(m.text, 1);
+                    if (m.cursor != null) {
+                        conn.setSelection(m.cursor[0], m.cursor[1]);
+                    }
+                    break;
+                case ACTION_COMMIT:
                     conn.commitText(m.text, 1);
-                if (m.cursor != null) {
+                    break;
+                case ACTION_ENTER:
+                    KeyEvent enterDown = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER);
+                    conn.sendKeyEvent(enterDown);
+                    KeyEvent enterUp = new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER);
+                    conn.sendKeyEvent(enterUp);
+                    break;
+                case ACTION_CURSOR:
                     conn.setSelection(m.cursor[0], m.cursor[1]);
-                }
-                break;
-            case ACTION_COMMIT:
-                conn.commitText(m.text, 1);
-                break;
-            case ACTION_ENTER:
-                KeyEvent enterDown = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER);
-                conn.sendKeyEvent(enterDown);
-                KeyEvent enterUp = new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER);
-                conn.sendKeyEvent(enterUp);
-                break;
-            case ACTION_CURSOR:
-                conn.setSelection(m.cursor[0], m.cursor[1]);
-                break;
+                    break;
 //            case ACTION_BACKSPACE:
 //                conn.deleteSurroundingText(1, 0);
 //                break;
 //            case ACTION_DELETE:
 //                conn.deleteSurroundingText(0, 1);
 //                break;
+            }
         }
     }
 }

@@ -6,6 +6,7 @@ var server = {
 	reconnectInterval : 1000,
 	quickReconnect : 500,
 	slowReconnect : 1000,
+	messageDelegate : null,
 	queue : [],
 	connect : function() {
 		console.log("Connecting WebSocket");
@@ -47,9 +48,17 @@ var server = {
 	},
 
 	onMessage : function(message) {
-		var json = JSON.parse(message.data);
-		console.log("Received: " + JSON.stringify(json));
-		$("." + json.service).trigger("message", json);
+		var json = message.data;
+		if (this.server.messageDelegate !== null) {
+			this.server.messageDelegate(JSON.parse(json));
+		} else {
+			console.log("Warning: received message but no handler presend. Message: "
+				+ JSON.stringify(json));
+		}	
+	},
+
+	setOnMessageHandler: function setOnMessageHandler(handler) {
+		this.messageDelegate = handler;
 	},
 	onClose : function() {
 		if (this.server.isConnected) {

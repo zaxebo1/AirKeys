@@ -4,7 +4,7 @@
 	<title>AirKeys</title>
 	<style type="text/css">
 	.center {
-		margin-left: auto;
+		margin-left: auto;	
 		margin-right: auto;
 		display: block;		
 	}
@@ -18,8 +18,11 @@
 <body>
 
 
-	<div id="container" class="center">
-		<textarea class="center" id="keyboard-input" rows=25 cols=100></textarea>
+	<div id="container" class="center" style="width: 960px">
+		<div style="margin-top: 300px"></div>
+		<textarea id="keyboard-input" rows=10 cols=50></textarea>
+		<br>
+		<input id="autosend" type="checkbox" checked>Enter is send</input>
 	</div>
 	<!-- jQuery -->
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
@@ -28,15 +31,26 @@
 	<script src="js/ws.js"></script>
 	<script>
 	var AirKeys = {
-		text: null,
 		isPressed: false,
 		input : $("#keyboard-input"),
+		autosend: $("#autosend"),
 		cursor : [-1,-1]
 	};
 
 	$(document).ready(function() {
 		AirKeys.input.focus();
 		server.connect();
+		server.setOnMessageHandler(onMessage);
+
+		function onMessage(message) {
+			if (message.action == "connected") {
+				AirKeys.input.val(message.text);
+				console.log("Input connected");
+			} else if (message.action == "disconnected") {
+				AirKeys.input.val("");
+				console.log("Input disconnected");
+			}
+		}
 
 		AirKeys.input.on('keyup', function onKeyUp(e) {
 			var k = e.which;
@@ -65,26 +79,26 @@
 				sendCompleteText();
 			}
 			else if (k == 13) {
-				server.send({"action": "enter"});
-				clean();
+				if (AirKeys.autosend.is(':checked')) {
+					server.send({"action": "enter"});
+					clean();
+				}
 			}
 			// else if (pressed) sendText();
 
-			AirKeys.text = AirKeys.input.val();
 		})
 		.on('keypress', function onKeyPress(e) {
 			console.log("OnKeyPress");
-			defer(commitText(String.fromCharCode(e.which), getCursor()[0]));
+			defer(commitText(String.fromCharCode(e.which)));
 		})
 		.on('paste cut', function onCutOrPaste(e) {
 			defer(sendCompleteText);
 		});
 
-		function commitText(char, cursorPosition) {
+		function commitText(char) {
 			server.send({
 				"action": "commit", 
-				"text": char,
-				"cursor": [cursorPosition, cursorPosition]
+				"text": char
 			});
 		}
 
