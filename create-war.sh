@@ -7,5 +7,6 @@ cd ${WWW_SRC}
 zip -r tmp.war *
 cd ..
 
+mkdir -p $(dirname ${WWW_DST})
 mv ${WWW_SRC}/tmp.war ${WWW_DST}
 
